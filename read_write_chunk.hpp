@@ -16,7 +16,6 @@ void read_chunk(std::istream &from, std::string const &magic, std::vector< T > *
 	assert(to_);
 	auto &to = *to_;
 	char c;
-	std::cout <<magic <<"\n";
 	struct ChunkHeader {
 		char magic[4] = {'\0', '\0', '\0', '\0'};
 		uint32_t size = 0;
@@ -37,8 +36,6 @@ void read_chunk(std::istream &from, std::string const &magic, std::vector< T > *
 		}
 		header.size = header.size * 10 + (c-'0');
 	}
-
-	std::cout << header.size << "\n";
 
 	// if (!from.read(reinterpret_cast< char * >(&header.size), sizeof(header.size))) {
 	// 	throw std::runtime_error("Failed to read chunk header");
