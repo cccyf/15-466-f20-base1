@@ -126,7 +126,7 @@ struct PPU466 {
 	struct Sprite {
 		uint8_t x = 0; //x position. 0 is the left edge of the screen.
 		uint8_t y = 240; //y position. 0 is the bottom edge of the screen. >= 240 is off-screen
-		uint8_t index = 0; //index into tile table
+		uint8_t index = 5; //index into tile table
 		uint8_t attributes = 0; //tile attribute bits
 	};
 	static_assert(sizeof(Sprite) == 4, "Sprite is a 32-bit value.");

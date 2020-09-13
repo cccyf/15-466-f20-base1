@@ -2,9 +2,12 @@
 
 //for the GL_ERRORS() macro:
 #include "gl_errors.hpp"
+#include "read_write_chunk.hpp"
 
 //for glm::value_ptr() :
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>     // std::cout
+#include <fstream>      // std::ifstream
 
 #include <random>
 
@@ -102,6 +105,116 @@ PlayMode::PlayMode() {
 		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
 	};
 
+	std::ifstream from("resources/grass_mid");
+	std::istream& is = from;
+	std::string magic="gmid";
+	std::vector<int8_t> colors;
+	read_chunk(is, magic, &colors);
+
+	assert(colors.size() == 16);
+	for (size_t i = 0; i < 4; i++)
+	{
+		ppu.palette_table[5][i]=(glm::u8vec4(colors[i*4],colors[i*4+1],colors[i*4+2],colors[i*4+3]));
+
+		printf("%x, %x, %x, %x\n",ppu.palette_table[5][i][0], ppu.palette_table[5][i][1], ppu.palette_table[5][i][2], ppu.palette_table[5][i][3]);
+	}
+
+	std::ifstream sand_palette("resources/sand_palette");
+	std::istream& is_sand = sand_palette;
+	std::string sand_magic="sand";
+	std::vector<int8_t> sand_colors;
+	read_chunk(is_sand, sand_magic, &sand_colors);
+
+	assert(sand_colors.size() == 16);
+	for (size_t i = 0; i < 4; i++)
+	{
+		ppu.palette_table[4][i]=(glm::u8vec4(sand_colors[i*4],sand_colors[i*4+1],sand_colors[i*4+2],sand_colors[i*4+3]));
+	}
+
+	std::ifstream spr0_palette("resources/sprite0_palette");
+	std::istream& spr0_p = spr0_palette;
+	std::string sp0_p_magic="spr0";
+	std::vector<int8_t> spr0_colors;
+	read_chunk(spr0_p, sp0_p_magic, &spr0_colors);
+
+	assert(colors.size() == 16);
+	for (size_t i = 0; i < 4; i++)
+	{
+		ppu.palette_table[2][i]=(glm::u8vec4(spr0_colors[i*4],spr0_colors[i*4+1],spr0_colors[i*4+2],spr0_colors[i*4+3]));
+		printf("%x, %x, %x, %x\n",ppu.palette_table[2][i][0], ppu.palette_table[2][i][1], ppu.palette_table[2][i][2], ppu.palette_table[2][i][3]);
+	
+	}
+
+	std::ifstream spr1_palette("resources/sprite1_palette");
+	std::istream& spr1_p = spr1_palette;
+	std::string sp1_p_magic="spr1";
+	std::vector<int8_t> spr1_colors;
+	read_chunk(spr1_p, sp1_p_magic, &spr1_colors);
+
+	assert(colors.size() == 16);
+	for (size_t i = 0; i < 4; i++)
+	{
+		ppu.palette_table[3][i]=(glm::u8vec4(spr1_colors[i*4],spr1_colors[i*4+1],spr1_colors[i*4+2],spr1_colors[i*4+3]));
+	}
+	
+
+	std::ifstream grass("resources/grass_tile");
+	std::istream& gs = grass;
+	std::string gma = "gras";
+	std::vector<int8_t> grass_tiles;
+	read_chunk(gs, gma, &grass_tiles);
+
+	std::cout << grass_tiles.size();
+
+	size_t bg_tile_start = 33;
+	for (size_t j = 0; j < grass_tiles.size(); j++)
+	{
+		if(j%2 == 0){
+			ppu.tile_table[bg_tile_start + j/16].bit0[(j/2)%8] = grass_tiles[j];
+		}else{
+			ppu.tile_table[bg_tile_start + j/16].bit1[(j/2)%8] = grass_tiles[j];
+			
+		}
+	}
+
+	// std::ifstream sand_resource("resources/sand_tile");
+	// std::istream& sand_tiles_ptr = sand_resource;
+	// std::vector<int8_t> sand_tiles;
+	// read_chunk(sand_tiles_ptr, sand_magic, &sand_tiles);
+
+	// std::cout << sand_tiles.size();
+
+	// bg_tile_start = 97;
+	// for (size_t j = 0; j < grass_tiles.size(); j++)
+	// {
+	// 	if(j%2 == 0){
+	// 		ppu.tile_table[bg_tile_start + j/16].bit0[(j/2)%8] = grass_tiles[j];
+	// 	}else{
+	// 		ppu.tile_table[bg_tile_start + j/16].bit1[(j/2)%8] = grass_tiles[j];
+	// 	}
+	// }
+
+	
+	std::ifstream sprite_tile("resources/sprite0");
+	std::ifstream& sp = sprite_tile;
+	std::string str_spr = "spr0";
+	std::vector<int8_t> spr_tiles;
+	read_chunk(sp, str_spr, &spr_tiles);
+
+	std::cout << spr_tiles.size();
+	size_t spr_tiles_ind = 28;
+	for (size_t i = 0; i < 4; i+=1)
+	{
+		for (size_t j = 0; j < 8; j++)
+		{
+			ppu.tile_table[spr_tiles_ind+i].bit0[8-j-1] = spr_tiles[i*8+j];
+			ppu.tile_table[spr_tiles_ind+i].bit1[8-j-1] = spr_tiles[4*8+i*8+j];
+			
+		}
+		
+	}
+	
+	
 }
 
 PlayMode::~PlayMode() {
@@ -164,47 +277,94 @@ void PlayMode::update(float elapsed) {
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
+
+	for (uint32_t y = 0; y < PPU466::BackgroundHeight; ++y) {
+		for (uint32_t x = 0; x < PPU466::BackgroundWidth; ++x) {
+			ppu.background[x+PPU466::BackgroundWidth*y] = (33 + ((x%8)+(y%8)*8) % 64) | (4 << 8) ;
+		}
+	}
+
+	ppu.sprites[0].x = int32_t(player_at.x);
+	ppu.sprites[0].y = int32_t(player_at.y)+8;
+	ppu.sprites[0].index = 29;
+	ppu.sprites[0].attributes = 2;
+
+	ppu.sprites[1].x = int32_t(player_at.x)+8;
+	ppu.sprites[1].y = int32_t(player_at.y)+8;
+	ppu.sprites[1].index = 28;
+	ppu.sprites[1].attributes = 2;
+
+	ppu.sprites[2].x = int32_t(player_at.x);
+	ppu.sprites[2].y = int32_t(player_at.y);
+	ppu.sprites[2].index = 31;
+	ppu.sprites[2].attributes = 2;
+
+	ppu.sprites[3].x = int32_t(player_at.x)+8;
+	ppu.sprites[3].y = int32_t(player_at.y);
+	ppu.sprites[3].index = 30;
+	ppu.sprites[3].attributes = 2;
+
+	ppu.sprites[4].x = 80;
+	ppu.sprites[4].y = 80+8;
+	ppu.sprites[4].index = 29;
+	ppu.sprites[4].attributes = 3;
+
+	ppu.sprites[5].x = 80+8;
+	ppu.sprites[5].y = 80+8;
+	ppu.sprites[5].index = 28;
+	ppu.sprites[5].attributes = 3;
+
+	ppu.sprites[6].x = 80;
+	ppu.sprites[6].y = 80;
+	ppu.sprites[6].index = 31;
+	ppu.sprites[6].attributes = 3;
+
+	ppu.sprites[7].x = 80+8;
+	ppu.sprites[7].y = 80;
+	ppu.sprites[7].index = 30;
+	ppu.sprites[7].attributes = 3;
+
+
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//--- set ppu state based on game state ---
 
 	//background color will be some hsv-like fade:
-	ppu.background_color = glm::u8vec4(
-		std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 0.0f / 3.0f) ) ) ))),
-		std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 1.0f / 3.0f) ) ) ))),
-		std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 2.0f / 3.0f) ) ) ))),
-		0xff
-	);
+	// ppu.background_color = glm::u8vec4(
+	// 	std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 0.0f / 3.0f) ) ) ))),
+	// 	std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 1.0f / 3.0f) ) ) ))),
+	// 	std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 2.0f / 3.0f) ) ) ))),
+	// 	0xff
+	// );
 
 	//tilemap gets recomputed every frame as some weird plasma thing:
 	//NOTE: don't do this in your game! actually make a map or something :-)
-	for (uint32_t y = 0; y < PPU466::BackgroundHeight; ++y) {
-		for (uint32_t x = 0; x < PPU466::BackgroundWidth; ++x) {
-			//TODO: make weird plasma thing
-			ppu.background[x+PPU466::BackgroundWidth*y] = ((x+y)%16);
-		}
-	}
+	// for (uint32_t y = 0; y < PPU466::BackgroundHeight; ++y) {
+	// 	for (uint32_t x = 0; x < PPU466::BackgroundWidth; ++x) {
+	// 		ppu.background[x+PPU466::BackgroundWidth*y] = (33 + ((x%8)+(y%8)*8) % 64) | (5 << 8) ;
+	// 	}
+	// }
 
 	//background scroll:
-	ppu.background_position.x = int32_t(-0.5f * player_at.x);
-	ppu.background_position.y = int32_t(-0.5f * player_at.y);
+	// ppu.background_position.x = int32_t(-0.5f * player_at.x);
+	// ppu.background_position.y = int32_t(-0.5f * player_at.y);
 
 	//player sprite:
-	ppu.sprites[0].x = int32_t(player_at.x);
-	ppu.sprites[0].y = int32_t(player_at.y);
-	ppu.sprites[0].index = 32;
-	ppu.sprites[0].attributes = 7;
+	// ppu.sprites[0].x = int32_t(player_at.x);
+	// ppu.sprites[0].y = int32_t(player_at.y);
+	// ppu.sprites[0].index = 32;
+	// ppu.sprites[0].attributes = 7;
 
 	//some other misc sprites:
-	for (uint32_t i = 1; i < 63; ++i) {
-		float amt = (i + 2.0f * background_fade) / 62.0f;
-		ppu.sprites[i].x = int32_t(0.5f * PPU466::ScreenWidth + std::cos( 2.0f * M_PI * amt * 5.0f + 0.01f * player_at.x) * 0.4f * PPU466::ScreenWidth);
-		ppu.sprites[i].y = int32_t(0.5f * PPU466::ScreenHeight + std::sin( 2.0f * M_PI * amt * 3.0f + 0.01f * player_at.y) * 0.4f * PPU466::ScreenWidth);
-		ppu.sprites[i].index = 32;
-		ppu.sprites[i].attributes = 6;
-		if (i % 2) ppu.sprites[i].attributes |= 0x80; //'behind' bit
-	}
+	// for (uint32_t i = 1; i < 63; ++i) {
+	// 	float amt = (i + 2.0f * background_fade) / 62.0f;
+	// 	ppu.sprites[i].x = int32_t(0.5f * PPU466::ScreenWidth + std::cos( 2.0f * M_PI * amt * 5.0f + 0.01f * player_at.x) * 0.4f * PPU466::ScreenWidth);
+	// 	ppu.sprites[i].y = int32_t(0.5f * PPU466::ScreenHeight + std::sin( 2.0f * M_PI * amt * 3.0f + 0.01f * player_at.y) * 0.4f * PPU466::ScreenWidth);
+	// 	ppu.sprites[i].index = 32;
+	// 	ppu.sprites[i].attributes = 6;
+	// 	if (i % 2) ppu.sprites[i].attributes |= 0x80; //'behind' bit
+	// }
 
 	//--- actually draw ---
 	ppu.draw(drawable_size);
